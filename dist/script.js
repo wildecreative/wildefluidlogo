@@ -7,6 +7,9 @@ var vertex = `
 				gl_Position = vec4(position, 0, 1);
 		}
 `;
+
+
+// edit these values later for RGBA to use png
 var fragment = `
 		precision highp float;
 		precision highp int;
@@ -37,50 +40,62 @@ var fragment = `
 			vec2 myUV3 = (uv - vec2(0.5))*res.zw + vec2(0.5);
 			myUV3 -= flow.xy * (0.10 * 1.4);
 
-			vec3 tex = texture2D(tWater, myUV).rgb;
+			vec3 tex = texture2D(tWater, myUV).rgb;    // <<<<<< we want to use rgba for transparent (alpha)
 			vec3 tex2 = texture2D(tWater, myUV2).rgb;
 			vec3 tex3 = texture2D(tWater, myUV3).rgb;
 
 			gl_FragColor = vec4(tex.r, tex.g, tex.b, 0);
+            //gl_FragColor = texture2D(texture, uv);
 		}
 `;
+
+ 
 {
-  var _size = [2.3, 1];
-  var renderer = new ogl.Renderer({ dpr: 2 });
+
+  // img aspect raio
+  var _size = [1.85, 1]; 
+  
+  // pass in { dpr: 2, alpha: true } for transparent
+  var renderer = new ogl.Renderer({ dpr: 2, }); 
+
   var gl = renderer.gl;
-  document.body.appendChild(gl.canvas);
+  // display to html page
+  document.body.appendChild(gl.canvas); 
 
   // Variable inputs to control flowmap
   var aspect = 1;
   var mouse = new ogl.Vec2(-1);
   var velocity = new ogl.Vec2();
-  function resize() {
-    gl.canvas.width = window.innerWidth * 1.0;
-    gl.canvas.height = window.innerHeight * 1.0;
-    gl.canvas.style.width = window.innerWidth + "px";
-    gl.canvas.style.height = window.innerHeight + "px";
+  function resize() { 
+    let a1, a2;
+    
+    // aspect ratio
+    const imgSize = [window.innerWidth  , window.innerWidth * 0.8 * 0.5]; // <<<<<<<< img size /responsive off container/window width
 
-    var a1, a2;
-    var imageAspect = _size[1] / _size[0];
-    if (window.innerHeight / window.innerWidth < imageAspect) {
+    var imageAspect = imgSize[1] / imgSize[0];
+    if (imgSize[1] / imgSize[0] < imageAspect) {
       a1 = 1;
-      a2 = window.innerHeight / window.innerWidth / imageAspect;
+      a2 = imgSize[1] / imgSize[0] / imageAspect;
     } else {
-      a1 = window.innerWidth / window.innerHeight * imageAspect;
+      a1 = (imgSize[0] / imgSize[1]) * imageAspect;
       a2 = 1;
     }
     mesh.program.uniforms.res.value = new ogl.Vec4(
-    window.innerWidth,
-    window.innerHeight,
-    a1,
-    a2);
+      imgSize[0],
+      imgSize[1],
+      a1,
+      a2
+    );
 
-
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    aspect = window.innerWidth / window.innerHeight;
+    
+    // renderer is like the img in canvas ( displaing the img - control size/aspect)
+    renderer.setSize(imgSize[0], imgSize[1]);
+    aspect = imgSize[0] / imgSize[1];
   }
+
+
   var flowmap = new ogl.Flowmap(gl, {
-    falloff: 0.9,
+    falloff: 0.9, // << stamp/mouse effect size
     dissipation: 0.95,
     alpha: .05 });
 
@@ -89,8 +104,8 @@ var fragment = `
     position: {
       size: 2,
       data: new Float32Array([-1, -1, 3, -1, -1, 3]) },
-
-    uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) } });
+      uv: { size: 2, data: new Float32Array([0, 0, 2, 0, 0, 2]) } 
+    });
 
   var texture = new ogl.Texture(gl, {
     minFilter: gl.LINEAR,
@@ -100,14 +115,15 @@ var fragment = `
   img.onload = () => texture.image = img;
   img.crossOrigin = "Anonymous";
   img.src = "https://res.cloudinary.com/drcax6kwu/image/upload/v1661480863/wilde%20assets/logo_for_code_small_2_mfjkvi.png";
-
-
+  
+  
   var a1, a2;
   var imageAspect = _size[1] / _size[0];
   if (window.innerHeight / window.innerWidth < imageAspect) {
     a1 = 1;
     a2 = window.innerHeight / window.innerWidth / imageAspect;
-  } else {
+  } 
+  else {
     a1 = window.innerWidth / window.innerHeight * imageAspect;
     a2 = 1;
   }
@@ -115,6 +131,7 @@ var fragment = `
   var program = new ogl.Program(gl, {
     vertex,
     fragment,
+    // transparent: true,
     uniforms: {
       uTime: { value: 0 },
       tWater: { value: texture },
@@ -125,20 +142,21 @@ var fragment = `
       // Note that the uniform is applied without using an object and value property
       // This is because the class alternates this texture between two render targets
       // and updates the value property after each render.
-      tFlow: flowmap.uniform } });
+      tFlow: flowmap.uniform } 
+    });
 
 
   var mesh = new ogl.Mesh(gl, { geometry, program });
 
-  window.addEventListener("resize", resize, false);
+  window.addEventListener("resize", resize, false); // update img width/ratio
   resize();
 
   // Create handlers to get mouse position and velocity
   var isTouchCapable = ("ontouchstart" in window);
-  if (isTouchCapable) {
+  if (isTouchCapable) { // mobile/tablet - touchscreen
     window.addEventListener("touchstart", updateMouse, false);
     window.addEventListener("touchmove", updateMouse, { passive: false });
-  } else {
+  } else { // desktop
     window.addEventListener("mousemove", updateMouse, false);
   }
   var lastTime;
@@ -197,3 +215,5 @@ var fragment = `
     renderer.render({ scene: mesh });
   }
 }
+
+ 
